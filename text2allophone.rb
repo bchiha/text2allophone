@@ -15,7 +15,7 @@ class Text2allophone
 		File.open(@cmu2sp0256File, "r") do |file|
 			file.each_line do |line| 
 				parts = line.strip.split(' ')
-				@cmuRef[parts[0]] = {:text=>parts[1],:hex=>parts[2]}
+				@cmuRef[parts[0]] = {:text=>parts[1],:hex=>parts[2].hex}
 			end
 		end
 	end
@@ -42,16 +42,32 @@ class Text2allophone
 					end
 					printf(". ")
 				else
-					badWord << word
+					badWord << word unless word == "EOF" || word == "PP"
 				end
 			end
-			printf("\nHEX> ")
+			printf("\n000> ")
+			count = 0
 			line.upcase.split(' ').each do |word|
 				if @cmuDict.include?(word)
 					@cmuDict[word].each do |allophone|
-						printf("%s ",@cmuRef[allophone][:hex])
+						count += 1
+						printf("%02X ",@cmuRef[allophone][:hex])
+						printf("\n%03X> ",count) if count.modulo(8) == 0
 					end
-					printf("03 ") #word gap
+					count += 1
+					printf("%02X ", 3) #word gap
+					printf("\n%03X> ",count) if count.modulo(8) == 0
+				else
+					if word == "EOF"
+						count += 1
+						printf("%02X ", 255)
+						printf("\n%03X> ",count) if count.modulo(8) == 0
+					end
+					if word == "PP"
+						count += 1
+						printf("%02X ", 4)
+						printf("\n%03X> ",count) if count.modulo(8) == 0
+					end
 				end
 			end
 			if !badWord.empty?
@@ -68,7 +84,7 @@ t2a = Text2allophone.new
 t2a.loadCmuDictFile
 t2a.loadCmuRefFile
 
-puts "Type in a sentence to convert...(C-d to exit)\n\n"
+puts "Type in a sentence to convert...(EOF for FF, PP for 200ms Pause, C-d to exit)\n\n"
 
 t2a.translate
 
